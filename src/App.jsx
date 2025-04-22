@@ -57,7 +57,7 @@ const ProductCard = ({ product, onProductClick }) => {
                 </Card>
                 <Card className="space-y-2">
                     <p className="text-sm text-gray-500 line-clamp-3">
-                        {product.description}
+                        {product.short_desc} {/* Using short_desc here */}
                     </p>
                     <div className="flex items-center justify-between">
                         <span className="text-xl font-bold text-gray-400">
@@ -162,47 +162,52 @@ const ProductListingWebsite = () => {
 
             {selectedProduct && (
                 <Modal
-                show={isModalOpen}
-                size="sm:md:lg:xl" // Adjust sizes for different breakpoints
-                onClose={closeModal}
-            >
-                    <ModalHeader>
-                        {selectedProduct.name}
+                    show={isModalOpen}
+                    size="md"
+                    onClose={closeModal}
+                >
+                    <ModalHeader className="rounded-t-lg bg-white dark:bg-gray-800">
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                            {selectedProduct.name}
+                        </h2>
                     </ModalHeader>
-                    <ModalBody>
-                        <div className="space-y-6">
+                    <ModalBody className="bg-white dark:bg-gray-800">
+                        <div className="flex flex-col space-y-4">
                             <img
                                 src={getImageUrl(selectedProduct.image)}
                                 alt={selectedProduct.name}
-                                className="w-full rounded-md"
+                                className="w-full rounded-md shadow-md"
                             />
-                            <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
-                                {selectedProduct.description}
-                            </p>
-                            <div className="flex items-center justify-between">
-                                <span className="text-2xl font-bold text-gray-700 dark:text-white">
+                            <div className="py-4 px-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                                <p className="text-lg font-semibold text-gray-900 dark:text-white">
                                     ${selectedProduct.price.toFixed(2)}
-                                </span>
-                                <Badge color="gray">
-                                    {selectedProduct.category.name}
-                                </Badge>
+                                    <Badge color="gray" className="ml-2">
+                                        {selectedProduct.category.name}
+                                    </Badge>
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Stock: {selectedProduct.stock}
+                                </p>
                             </div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Stock: {selectedProduct.stock}
-                            </p>
+                            <div className="py-4 px-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                                <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-2">Description</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 break-words">
+                                    {selectedProduct.short_desc} {/* Displaying short_desc in modal */}
+                                </p>
+                            </div>
                             {selectedProduct.additional_info && (
-                                <div>
-                                    <h3 className="text-lg font-semibold dark:text-white">Additional Information</h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                <div className="py-4 px-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                                    <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-2">Additional Information</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 break-words">
                                         {selectedProduct.additional_info}
                                     </p>
                                 </div>
                             )}
                         </div>
                     </ModalBody>
-                    <ModalFooter>
+                    <ModalFooter className="bg-gray-50 dark:bg-gray-700 rounded-b-lg">
                         <button
-                            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                            className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
                             onClick={closeModal}
                         >
                             Close
