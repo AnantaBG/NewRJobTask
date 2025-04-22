@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from 'flowbite-react';
-import { Badge } from 'flowbite-react';
+import { Card, Badge, Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
 import { motion } from 'framer-motion';
 
 // Api URL
@@ -21,14 +20,15 @@ const Skeleton = ({ className, ...props }) => (
     </div>
 );
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, onProductClick }) => {
     const imageUrl = getImageUrl(product.image);
 
     return (
         <motion.div
-            className='text-white'
+            className='text-white cursor-pointer'
             whileHover={{ scale: 1.03 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            onClick={() => onProductClick(product)}
         >
             <Card
                 className={cn(
@@ -100,6 +100,8 @@ const ProductListingWebsite = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -121,6 +123,16 @@ const ProductListingWebsite = () => {
 
         fetchProducts();
     }, []);
+
+    const handleProductClick = (product) => {
+        setSelectedProduct(product);
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setSelectedProduct(null);
+    };
 
     if (loading) {
         return (
@@ -144,9 +156,60 @@ const ProductListingWebsite = () => {
             <h1 className="text-3xl font-bold mb-8 text-center text-gray-800">Our Products</h1>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
                 {products.map((product) => (
-                    <ProductCard key={product.id} product={product} />
+                    <ProductCard key={product.id} product={product} onProductClick={handleProductClick} />
                 ))}
             </div>
+
+            {selectedProduct && (
+                <Modal
+                show={isModalOpen}
+                size="sm:md:lg:xl" // Adjust sizes for different breakpoints
+                onClose={closeModal}
+            >
+                    <ModalHeader>
+                        {selectedProduct.name}
+                    </ModalHeader>
+                    <ModalBody>
+                        <div className="space-y-6">
+                            <img
+                                src={getImageUrl(selectedProduct.image)}
+                                alt={selectedProduct.name}
+                                className="w-full rounded-md"
+                            />
+                            <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
+                                {selectedProduct.description}
+                            </p>
+                            <div className="flex items-center justify-between">
+                                <span className="text-2xl font-bold text-gray-700 dark:text-white">
+                                    ${selectedProduct.price.toFixed(2)}
+                                </span>
+                                <Badge color="gray">
+                                    {selectedProduct.category.name}
+                                </Badge>
+                            </div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Stock: {selectedProduct.stock}
+                            </p>
+                            {selectedProduct.additional_info && (
+                                <div>
+                                    <h3 className="text-lg font-semibold dark:text-white">Additional Information</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        {selectedProduct.additional_info}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </ModalBody>
+                    <ModalFooter>
+                        <button
+                            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                            onClick={closeModal}
+                        >
+                            Close
+                        </button>
+                    </ModalFooter>
+                </Modal>
+            )}
         </div>
     );
 };
