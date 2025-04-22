@@ -1,9 +1,11 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import { Card, Badge, Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react';
+import { Card, Badge, Modal, ModalHeader, ModalBody, ModalFooter, Label, TextInput } from 'flowbite-react';
 import { motion } from 'framer-motion';
 
-// Api URL
+// Api base and order URL
 const API_BASE_URL = 'https://admin.refabry.com/api/all/product/get';
+const ORDER_API_URL = 'https://admin.refabry.com/api/public/order/create';
 
 //image URL
 const getImageUrl = (imageName) => {
@@ -57,7 +59,7 @@ const ProductCard = ({ product, onProductClick }) => {
                 </Card>
                 <Card className="space-y-2">
                     <p className="text-sm text-gray-500 line-clamp-3">
-                        {product.short_desc} {/* Using short_desc here */}
+                        {product.short_desc}
                     </p>
                     <div className="flex items-center justify-between">
                         <span className="text-xl font-bold text-gray-400">
@@ -101,7 +103,15 @@ const ProductListingWebsite = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedProduct, setSelectedProduct] = useState(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+    const [orderStatus, setOrderStatus] = useState(null);
+    const [orderError, setOrderError] = useState(null);
+    const [orderQuantity, setOrderQuantity] = useState(1);
+    const [customerPhone, setCustomerPhone] = useState('');
+    const [customerAddress, setCustomerAddress] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+    const deliveryCharge = 80; // Define delivery charge here
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -124,36 +134,106 @@ const ProductListingWebsite = () => {
         fetchProducts();
     }, []);
 
+    useEffect(() => {
+        if (successMessage) {
+            const timer = setTimeout(() => {
+                setSuccessMessage('');
+            }, 5000);
+
+            return () => clearTimeout(timer); 
+        }
+    }, [successMessage]);
+
     const handleProductClick = (product) => {
         setSelectedProduct(product);
-        setIsModalOpen(true);
+        setIsProductModalOpen(true);
+        setIsOrderModalOpen(false);
+        setOrderStatus(null);
+        setOrderError(null);
+        setOrderQuantity(1);
+        setCustomerPhone('');
+        setCustomerAddress('');
+        setSuccessMessage('');
     };
 
-    const closeModal = () => {
-        setIsModalOpen(false);
+    const closeProductModal = () => {
+        setIsProductModalOpen(false);
         setSelectedProduct(null);
     };
 
-    if (loading) {
-        return (
-            <div className="container mx-auto p-4">
-                <h1 className="text-3xl font-bold mb-8 text-center text-gray-800">Loading Products...</h1>
-                <LoadingSkeleton />
-            </div>
-        )
-    }
+    const openOrderModal = () => {
+        setIsProductModalOpen(false); 
+        setIsOrderModalOpen(true);
+    };
 
-    if (error) {
-        return (
-            <div className="container mx-auto p-4 text-red-500">
-                Error: {error}
-            </div>
-        );
-    }
+    const closeOrderModal = () => {
+        setIsOrderModalOpen(false);
+        setOrderStatus(null);
+        setOrderError(null);
+        setSuccessMessage('');
+    };
+
+    const handlePlaceOrder = async () => {
+        if (selectedProduct && customerPhone && customerAddress && orderQuantity > 0) {
+            const calculatedCodAmount = (selectedProduct.price * orderQuantity) + deliveryCharge;
+
+            const orderData = {
+                product_ids: selectedProduct.id.toString(),
+                s_product_qty: orderQuantity.toString(),
+                c_phone: customerPhone,
+                c_name: "Guest", 
+                courier: "steadfast",
+                address: customerAddress,
+                advance: null,
+                cod_amount: calculatedCodAmount.toFixed(2),
+                discount_amount: selectedProduct.discount_amount ? (parseFloat(selectedProduct.discount_amount) * orderQuantity).toFixed(2) : null,
+                delivery_charge: deliveryCharge.toString(),
+            };
+
+            try {
+                const response = await fetch(ORDER_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(orderData),
+                });
+
+                const responseData = await response.json();
+
+                if (responseData.status) {
+                    setOrderStatus(responseData.message);
+                    setOrderError(null);
+                    setIsOrderModalOpen(false);
+                    setSuccessMessage(`Successfully ordered: ${selectedProduct.name}`);
+                    setOrderQuantity(1);
+                    setCustomerPhone('');
+                    setCustomerAddress('');
+                } else {
+                    setOrderError(responseData.message || 'Failed to place order.');
+                    setOrderStatus(null);
+                    setSuccessMessage('');
+                }
+            } catch (error) {
+                setOrderError('An error occurred while placing the order.');
+                setOrderStatus(null);
+                setSuccessMessage('');
+            }
+        } else {
+            setOrderError('Please enter your phone number, address, and a valid quantity.');
+            setOrderStatus(null);
+            setSuccessMessage('');
+        }
+    };
 
     return (
         <div className="container mx-auto p-4">
             <h1 className="text-3xl font-bold mb-8 text-center text-gray-800">Our Products</h1>
+            {successMessage && (
+                <div className="p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400" role="alert">
+                    {successMessage}
+                </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
                 {products.map((product) => (
                     <ProductCard key={product.id} product={product} onProductClick={handleProductClick} />
@@ -161,59 +241,149 @@ const ProductListingWebsite = () => {
             </div>
 
             {selectedProduct && (
-                <Modal
-                    show={isModalOpen}
-                    size="md"
-                    onClose={closeModal}
-                >
-                    <ModalHeader className="rounded-t-lg bg-white dark:bg-gray-800">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                            {selectedProduct.name}
-                        </h2>
-                    </ModalHeader>
-                    <ModalBody className="bg-white dark:bg-gray-800">
-                        <div className="flex flex-col space-y-4">
-                            <img
-                                src={getImageUrl(selectedProduct.image)}
-                                alt={selectedProduct.name}
-                                className="w-full rounded-md shadow-md"
-                            />
-                            <div className="py-4 px-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-                                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                                    ${selectedProduct.price.toFixed(2)}
-                                    <Badge color="gray" className="ml-2">
-                                        {selectedProduct.category.name}
-                                    </Badge>
-                                </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    Stock: {selectedProduct.stock}
-                                </p>
-                            </div>
-                            <div className="py-4 px-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-                                <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-2">Description</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 break-words">
-                                    {selectedProduct.short_desc} {/* Displaying short_desc in modal */}
-                                </p>
-                            </div>
-                            {selectedProduct.additional_info && (
+                <>
+                    <Modal
+                        show={isProductModalOpen}
+                        size="md"
+                        onClose={closeProductModal}
+                    >
+                        <ModalHeader className="rounded-t-lg bg-white dark:bg-gray-800">
+                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                                {selectedProduct.name}
+                            </h2>
+                        </ModalHeader>
+                        <ModalBody className="bg-white dark:bg-gray-800">
+                            <div className="flex flex-col space-y-4">
+                                <img
+                                    src={getImageUrl(selectedProduct.image)}
+                                    alt={selectedProduct.name}
+                                    className="w-full rounded-md shadow-md"
+                                />
                                 <div className="py-4 px-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-                                    <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-2">Additional Information</h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 break-words">
-                                        {selectedProduct.additional_info}
+                                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                                        ${selectedProduct.price.toFixed(2)}
+                                        <Badge color="gray" className="ml-2">
+                                            {selectedProduct.category.name}
+                                        </Badge>
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        Stock: {selectedProduct.stock}
                                     </p>
                                 </div>
-                            )}
-                        </div>
-                    </ModalBody>
-                    <ModalFooter className="bg-gray-50 dark:bg-gray-700 rounded-b-lg">
-                        <button
-                            className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
-                            onClick={closeModal}
-                        >
-                            Close
-                        </button>
-                    </ModalFooter>
-                </Modal>
+                                <div className="py-4 px-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                                    <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-2">Description</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 break-words">
+                                        {selectedProduct.short_desc}
+                                    </p>
+                                </div>
+                                {selectedProduct.additional_info && (
+                                    <div className="py-4 px-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                                        <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-2">Additional Information</h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 break-words">
+                                            {selectedProduct.additional_info}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </ModalBody>
+                        <ModalFooter className="bg-gray-50 dark:bg-gray-700 rounded-b-lg">
+                            <button
+                                className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
+                                onClick={closeProductModal}
+                            >
+                                Close
+                            </button>
+                            <button
+                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                                onClick={openOrderModal}
+                            >
+                                Place Order
+                            </button>
+                        </ModalFooter>
+                    </Modal>
+
+                    <Modal
+                        show={isOrderModalOpen}
+                        size="md"
+                        onClose={closeOrderModal}
+                    >
+                        <ModalHeader className="rounded-t-lg bg-white dark:bg-gray-800">
+                            <div className="flex items-center space-x-4">
+                                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                                    Order Details
+                                </h2>
+                                <div className="text-gray-600 dark:text-gray-400">
+                                    {selectedProduct.name} - ${selectedProduct.price.toFixed(2)}
+                                </div>
+                            </div>
+                        </ModalHeader>
+                        <ModalBody className="bg-white dark:bg-gray-800">
+                            <div className="flex flex-col space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="quantity" value="Quantity" />
+                                    <TextInput
+                                        id="quantity"
+                                        type="number"
+                                        value={orderQuantity}
+                                        onChange={(e) => setOrderQuantity(parseInt(e.target.value))}
+                                        min="1"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone" value="Phone Number" />
+                                    <TextInput
+                                        id="phone"
+                                        type="tel"
+                                        value={customerPhone}
+                                        onChange={(e) => setCustomerPhone(e.target.value)}
+                                        placeholder="01xxxxxxxxx"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="address" value="Delivery Address" />
+                                    <TextInput
+                                        id="address"
+                                        type="text"
+                                        value={customerAddress}
+                                        onChange={(e) => setCustomerAddress(e.target.value)}
+                                        placeholder="Your full address"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="py-4 px-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                                        Total Amount: ${((selectedProduct.price * orderQuantity) + deliveryCharge).toFixed(2)}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        Delivery Charge: ${deliveryCharge.toFixed(2)}
+                                    </p>
+                                </div>
+
+                                {orderError && (
+                                    <div className="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400" role="alert">
+                                        {orderError}
+                                    </div>
+                                )}
+                            </div>
+                        </ModalBody>
+                        <ModalFooter className="bg-gray-50 dark:bg-gray-700 rounded-b-lg">
+                            <button
+                                className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
+                                onClick={closeOrderModal}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                                onClick={handlePlaceOrder}
+                            >
+                                Confirm Order
+                            </button>
+                        </ModalFooter>
+                    </Modal>
+                </>
             )}
         </div>
     );
