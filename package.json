@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "flowbite-react patch"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
@@ -16,6 +17,7 @@
     "@radix-ui/react-slot": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "flowbite-react": "^0.11.7",
     "framer-motion": "^12.7.4",
     "localforage": "^1.10.0",
     "match-sorter": "^8.0.0",
