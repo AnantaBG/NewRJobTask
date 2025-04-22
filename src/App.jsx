@@ -111,7 +111,7 @@ const ProductListingWebsite = () => {
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
-    const deliveryCharge = 80; // Define delivery charge here
+    const deliveryCharge = 80;
 
     useEffect(() => {
         const fetchProducts = async () => {
